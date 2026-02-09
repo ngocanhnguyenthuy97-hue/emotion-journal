@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>🌈 Emotion Journal SEL</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg, #ffecd2, #fcb69f);
+            text-align: center;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            max-width: 650px;
+            margin: 25px auto;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .2);
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer
+        }
+
+        input,
+        textarea {
+            width: 90%;
+            padding: 8px;
+            margin: 6px
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        td,
+        th {
+            border: 1px solid #ddd;
+            padding: 6px;
+            font-size: 12px
+        }
+
+        .mood {
+            font-size: 28px
+        }
+
+        img.preview {
+            max-width: 70px;
+            border-radius: 10px
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+
+    <script>
+        const moods = ["😊", "😌", "😢", "😡", "😟", "🤩"]
+
+        function save(k, v) { localStorage.setItem(k, JSON.stringify(v)) }
+        function load(k) { return JSON.parse(localStorage.getItem(k) || "[]") }
+
+        let currentUser = null
+        let moodIndex = null
+        let imageBase64 = ""
+
+        // ===== INIT ADMIN =====
+        let users = load("users")
+        if (!users.find(u => u.role === "admin")) {
+            users.push({ id: "admin", name: "admin", password: "123", role: "admin" })
+            save("users", users)
+        }
+
+        // ===== LOGIN =====
+        function loginUI() {
+            app.innerHTML = `
+<div class="card">
+<h2>🌈 Emotion Journal</h2>
+<input id="name" placeholder="Tên"><br>
+<input id="pass" type="password" placeholder="Mật khẩu"><br>
+<button onclick="login()">Đăng nhập</button>
+<button onclick="register()">Đăng ký</button>
+<p>Admin: admin / 123</p>
+</div>`
+        }
+
+        function register() {
+            let u = load("users")
+            u.push({ id: Date.now() + "", name: name.value, password: pass.value, role: "student" })
+            save("users", u)
+            alert("Đăng ký thành công")
+        }
+
+        function login() {
+            let u = load("users").find(x => x.name === name.value && x.password === pass.value)
+            if (!u) return alert("Sai")
+            currentUser = u
+            if (u.role === "admin") adminUI()
+            else studentUI()
+        }
+
+        // ===== STUDENT =====
+        function studentUI() {
+            let today = new Date().toISOString().split("T")[0]
+
+            app.innerHTML = `
+<div class="card">
+<h3>Xin chào ${currentUser.name}</h3>
+
+📅 <input type="date" id="entryDate" value="${today}">
+
+<h4>Chọn cảm xúc</h4>
+${moods.map((m, i) => `<button class="mood" onclick="choose(${i})">${m}</button>`).join("")}
+
+<div id="form"></div>
+
+<hr>
+<button onclick="history()">📒 Lịch sử</button>
+<button onclick="logout()">Đăng xuất</button>
+</div>`
+        }
+
+        function choose(i) {
+            moodIndex = i
+
+            form.innerHTML = `
+Năng lượng<br>
+<input type="range" id="energy" min="1" max="5"><br>
+
+<textarea id="note" placeholder="Ghi chú"></textarea><br>
+
+📸 Thêm hình ảnh<br>
+<input type="file" accept="image/*" onchange="previewImage(event)"><br>
+<img id="imgPreview" class="preview"><br>
+
+<button onclick="saveEntry()">💾 Lưu</button>
+`
+        }
+
+        // ===== IMAGE TO BASE64 =====
+        function previewImage(e) {
+            let reader = new FileReader()
+            reader.onload = function () {
+                imageBase64 = reader.result
+                imgPreview.src = imageBase64
+            }
+            reader.readAsDataURL(e.target.files[0])
+        }
+
+        function zone(m) {
+            if (m === 3) return "Red"
+            if (m === 2) return "Blue"
+            if (m === 1) return "Green"
+            return "Yellow"
+        }
+
+        // ===== SAVE =====
+        function saveEntry() {
+            let dateVal = entryDate.value
+            let entries = load("entries")
+
+            let existing = entries.find(e => e.userId === currentUser.id && e.date === dateVal)
+
+            let data = {
+                mood: moodIndex,
+                energy: +energy.value,
+                note: note.value,
+                zone: zone(moodIndex),
+                image: imageBase64
+            }
+
+            if (existing) {
+                Object.assign(existing, data)
+                alert("Đã cập nhật")
+            } else {
+                entries.push({
+                    id: Date.now() + "",
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    date: dateVal,
+                    ...data
+                })
+                alert("Đã lưu")
+            }
+
+            save("entries", entries)
+            imageBase64 = ""
+            studentUI()
+        }
+
+        // ===== HISTORY =====
+        function history() {
+            let e = load("entries").filter(x => x.userId === currentUser.id)
+
+            app.innerHTML = `
+<div class="card">
+<h3>Lịch sử</h3>
+${e.map(x => `
+<div style="border-bottom:1px solid #ddd;padding:8px">
+${x.date} ${moods[x.mood]} (${x.zone})<br>
+${x.note || ""}<br>
+${x.image ? `<img src="${x.image}" class="preview">` : ""}
+</div>
+`).join("")}
+<button onclick="studentUI()">⬅</button>
+</div>`
+        }
+
+        // ===== ADMIN =====
+        function adminUI() {
+            let e = load("entries")
+
+            let rows = e.map(x => `
+<tr>
+<td>${x.date}</td>
+<td>${x.userName}</td>
+<td>${moods[x.mood]}</td>
+<td>${x.energy}</td>
+<td>${x.zone}</td>
+<td>${x.note}</td>
+<td>${x.image ? `<img src="${x.image}" class="preview">` : ""}</td>
+</tr>`).join("")
+
+            app.innerHTML = `
+<div class="card">
+<h2>📊 ADMIN DASHBOARD</h2>
+<button onclick="logout()">Đăng xuất</button>
+<table>
+<tr>
+<th>Ngày</th><th>Tên</th><th>Cảm xúc</th><th>Năng lượng</th><th>Zone</th><th>Ghi chú</th><th>Ảnh</th>
+</tr>
+${rows}
+</table>
+</div>`
+        }
+
+        function logout() { currentUser = null; loginUI() }
+
+        loginUI()
+    </script>
+</body>
+
+</html>
