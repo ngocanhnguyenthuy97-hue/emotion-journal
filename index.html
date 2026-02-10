@@ -3,250 +3,157 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>🌈 Emotion Journal SEL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Emotion Journal</title>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
     <style>
         body {
-            font-family: Arial;
-            background: linear-gradient(135deg, #ffecd2, #fcb69f);
-            text-align: center;
+            font-family: system-ui;
+            background: #eef7f5;
             margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 480px;
+            width: 100%;
         }
 
         .card {
-            background: white;
-            max-width: 650px;
-            margin: 25px auto;
+            background: #fff;
             padding: 20px;
             border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, .2);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
         }
 
-        button {
-            padding: 8px 12px;
-            margin: 5px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer
+        h2 {
+            margin-top: 0;
+            text-align: center;
         }
 
         input,
         textarea {
-            width: 90%;
-            padding: 8px;
-            margin: 6px
-        }
-
-        table {
             width: 100%;
-            border-collapse: collapse
-        }
-
-        td,
-        th {
+            padding: 10px;
+            border-radius: 10px;
             border: 1px solid #ddd;
-            padding: 6px;
-            font-size: 12px
+            margin-bottom: 10px;
         }
 
-        .mood {
-            font-size: 28px
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: #7cc7b6;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 8px;
         }
 
-        img.preview {
-            max-width: 70px;
-            border-radius: 10px
+        button:hover {
+            background: #65b7a4;
+        }
+
+        .emotions {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .emotions button {
+            width: 18%;
+            font-size: 22px;
+            background: #d9f1ec;
+            color: #333;
+        }
+
+        .square {
+            width: 160px;
+            height: 160px;
+            background: #b8e4d9;
+            border-radius: 16px;
+            margin: auto;
+            transition: all 4s linear;
+        }
+
+        .expand {
+            transform: scale(1.3);
+        }
+
+        .timer {
+            font-size: 44px;
+            text-align: center;
+            margin: 10px;
+        }
+
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 
 <body>
-    <div id="app"></div>
+    <div class="container">
 
-    <script>
-        const moods = ["😊", "😌", "😢", "😡", "😟", "🤩"]
+        <!-- LOGIN -->
+        <div class="card">
+            <h2>👤 Đăng nhập</h2>
+            <input id="email" placeholder="Email">
+            <input id="password" type="password" placeholder="Mật khẩu">
+            <button id="registerBtn">Đăng ký</button>
+            <button id="loginBtn">Đăng nhập</button>
+            <button id="logoutBtn">Đăng xuất</button>
+        </div>
 
-        function save(k, v) { localStorage.setItem(k, JSON.stringify(v)) }
-        function load(k) { return JSON.parse(localStorage.getItem(k) || "[]") }
+        <!-- CHECK IN -->
+        <div class="card">
+            <h2>😊 Check-in cảm xúc</h2>
 
-        let currentUser = null
-        let moodIndex = null
-        let imageBase64 = ""
+            <div class="emotions">
+                <button data-e="sad">😢</button>
+                <button data-e="happy">😊</button>
+                <button data-e="excited">🤩</button>
+                <button data-e="angry">😡</button>
+                <button data-e="neutral">😐</button>
+            </div>
 
-        // ===== INIT ADMIN =====
-        let users = load("users")
-        if (!users.find(u => u.role === "admin")) {
-            users.push({ id: "admin", name: "admin", password: "123", role: "admin" })
-            save("users", users)
-        }
+            <input type="range" id="intensity" min="1" max="10">
 
-        // ===== LOGIN =====
-        function loginUI() {
-            app.innerHTML = `
-<div class="card">
-<h2>🌈 Emotion Journal</h2>
-<input id="name" placeholder="Tên"><br>
-<input id="pass" type="password" placeholder="Mật khẩu"><br>
-<button onclick="login()">Đăng nhập</button>
-<button onclick="register()">Đăng ký</button>
-<p>Admin: admin / 123</p>
-</div>`
-        }
+            <input type="date" id="date">
 
-        function register() {
-            let u = load("users")
-            u.push({ id: Date.now() + "", name: name.value, password: pass.value, role: "student" })
-            save("users", u)
-            alert("Đăng ký thành công")
-        }
+            <textarea id="note" placeholder="Ghi chú..."></textarea>
 
-        function login() {
-            let u = load("users").find(x => x.name === name.value && x.password === pass.value)
-            if (!u) return alert("Sai")
-            currentUser = u
-            if (u.role === "admin") adminUI()
-            else studentUI()
-        }
+            <input type="file" id="photo">
 
-        // ===== STUDENT =====
-        function studentUI() {
-            let today = new Date().toISOString().split("T")[0]
+            <button id="saveBtn">💾 Lưu</button>
+        </div>
 
-            app.innerHTML = `
-<div class="card">
-<h3>Xin chào ${currentUser.name}</h3>
+        <!-- BREATHING -->
+        <div class="card">
+            <h2>🫁 Thở hình vuông</h2>
 
-📅 <input type="date" id="entryDate" value="${today}">
+            <div class="square" id="box"></div>
 
-<h4>Chọn cảm xúc</h4>
-${moods.map((m, i) => `<button class="mood" onclick="choose(${i})">${m}</button>`).join("")}
+            <div class="timer" id="timer">4</div>
 
-<div id="form"></div>
+            <button id="startBtn">▶ Bắt đầu</button>
+            <button id="stopBtn">■ Dừng</button>
+        </div>
 
-<hr>
-<button onclick="history()">📒 Lịch sử</button>
-<button onclick="logout()">Đăng xuất</button>
-</div>`
-        }
+    </div>
 
-        function choose(i) {
-            moodIndex = i
-
-            form.innerHTML = `
-Năng lượng<br>
-<input type="range" id="energy" min="1" max="5"><br>
-
-<textarea id="note" placeholder="Ghi chú"></textarea><br>
-
-📸 Thêm hình ảnh<br>
-<input type="file" accept="image/*" onchange="previewImage(event)"><br>
-<img id="imgPreview" class="preview"><br>
-
-<button onclick="saveEntry()">💾 Lưu</button>
-`
-        }
-
-        // ===== IMAGE TO BASE64 =====
-        function previewImage(e) {
-            let reader = new FileReader()
-            reader.onload = function () {
-                imageBase64 = reader.result
-                imgPreview.src = imageBase64
-            }
-            reader.readAsDataURL(e.target.files[0])
-        }
-
-        function zone(m) {
-            if (m === 3) return "Red"
-            if (m === 2) return "Blue"
-            if (m === 1) return "Green"
-            return "Yellow"
-        }
-
-        // ===== SAVE =====
-        function saveEntry() {
-            let dateVal = entryDate.value
-            let entries = load("entries")
-
-            let existing = entries.find(e => e.userId === currentUser.id && e.date === dateVal)
-
-            let data = {
-                mood: moodIndex,
-                energy: +energy.value,
-                note: note.value,
-                zone: zone(moodIndex),
-                image: imageBase64
-            }
-
-            if (existing) {
-                Object.assign(existing, data)
-                alert("Đã cập nhật")
-            } else {
-                entries.push({
-                    id: Date.now() + "",
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    date: dateVal,
-                    ...data
-                })
-                alert("Đã lưu")
-            }
-
-            save("entries", entries)
-            imageBase64 = ""
-            studentUI()
-        }
-
-        // ===== HISTORY =====
-        function history() {
-            let e = load("entries").filter(x => x.userId === currentUser.id)
-
-            app.innerHTML = `
-<div class="card">
-<h3>Lịch sử</h3>
-${e.map(x => `
-<div style="border-bottom:1px solid #ddd;padding:8px">
-${x.date} ${moods[x.mood]} (${x.zone})<br>
-${x.note || ""}<br>
-${x.image ? `<img src="${x.image}" class="preview">` : ""}
-</div>
-`).join("")}
-<button onclick="studentUI()">⬅</button>
-</div>`
-        }
-
-        // ===== ADMIN =====
-        function adminUI() {
-            let e = load("entries")
-
-            let rows = e.map(x => `
-<tr>
-<td>${x.date}</td>
-<td>${x.userName}</td>
-<td>${moods[x.mood]}</td>
-<td>${x.energy}</td>
-<td>${x.zone}</td>
-<td>${x.note}</td>
-<td>${x.image ? `<img src="${x.image}" class="preview">` : ""}</td>
-</tr>`).join("")
-
-            app.innerHTML = `
-<div class="card">
-<h2>📊 ADMIN DASHBOARD</h2>
-<button onclick="logout()">Đăng xuất</button>
-<table>
-<tr>
-<th>Ngày</th><th>Tên</th><th>Cảm xúc</th><th>Năng lượng</th><th>Zone</th><th>Ghi chú</th><th>Ảnh</th>
-</tr>
-${rows}
-</table>
-</div>`
-        }
-
-        function logout() { currentUser = null; loginUI() }
-
-        loginUI()
-    </script>
+    <script defer src="app.js"></script>
 </body>
 
 </html>
